@@ -39,29 +39,77 @@ jobs:
             const language = getField('Primary Programming Language');
             const license = getField('License');
 
-            // Build tags array
-            const tags = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
+            // Validate required fields
+            if (!name || !tagline || !github_url || !author || !author_github) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: '⚠️ Missing required fields. Please ensure Tool Name, Tagline, GitHub URL, Author, and GitHub Username are filled in.'
+              });
+              return;
+            }
 
-            // Generate slug from tool name
-            const slug = name.toLowerCase()
+            // Validate GitHub URL format
+            if (!/^https:\/\/github\.com\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+\/?$/.test(github_url)) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: '⚠️ GitHub URL doesn\'t look right. Expected format: `https://github.com/owner/repo`'
+              });
+              return;
+            }
+
+            // Sanitize strings for YAML — strip newlines and control chars
+            const sanitize = (s) => s.replace(/[\r\n]+/g, ' ').replace(/[^\x20-\x7E\xA0-\uFFFF]/g, '').trim();
+            const yamlStr = (s) => `"${sanitize(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+
+            // Build tags array
+            const tags = tagsRaw.split(',').map(t => sanitize(t)).filter(Boolean);
+
+            // Generate slug from tool name (only alphanumeric + hyphens)
+            const slug = sanitize(name).toLowerCase()
               .replace(/[^a-z0-9]+/g, '-')
               .replace(/^-|-$/g, '');
 
-            // Build frontmatter
-            const today = new Date().toISOString().split('T')[0];
-            let frontmatter = `---\nname: "${name.replace(/"/g, '\\"')}"\ntagline: "${tagline.replace(/"/g, '\\"')}"\nauthor: "${author.replace(/"/g, '\\"')}"\nauthor_github: "${author_github}"\ngithub_url: "${github_url}"`;
-            if (website_url && website_url !== '_No response_') {
-              frontmatter += `\nwebsite_url: "${website_url}"`;
+            if (!slug || slug.length < 2) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: '⚠️ Tool name produced an invalid slug. Please use a name with at least 2 alphanumeric characters.'
+              });
+              return;
             }
-            frontmatter += `\ntags: [${tags.map(t => `"${t}"`).join(', ')}]`;
+
+            // Build frontmatter with proper YAML escaping
+            const today = new Date().toISOString().split('T')[0];
+            const lines = [
+              '---',
+              `name: ${yamlStr(name)}`,
+              `tagline: ${yamlStr(tagline)}`,
+              `author: ${yamlStr(author)}`,
+              `author_github: "${sanitize(author_github).replace(/[^a-zA-Z0-9_-]/g, '')}"`,
+              `github_url: "${sanitize(github_url)}"`,
+            ];
+            if (website_url && website_url !== '_No response_') {
+              lines.push(`website_url: "${sanitize(website_url)}"`);
+            }
+            lines.push(`tags: [${tags.map(t => `"${t.replace(/"/g, '')}"`).join(', ')}]`);
             if (language && language !== '_No response_') {
-              frontmatter += `\nlanguage: "${language}"`;
+              lines.push(`language: "${sanitize(language).replace(/"/g, '')}"`);
             }
             if (license && license !== '_No response_') {
-              frontmatter += `\nlicense: "${license}"`;
+              lines.push(`license: "${sanitize(license).replace(/"/g, '')}"`);
             }
-            frontmatter += `\ndate_added: "${today}"\nfeatured: false\n---\n\n${description}`;
+            lines.push(`date_added: "${today}"`);
+            lines.push('featured: false');
+            lines.push('---');
+            lines.push('');
+            lines.push(description);
 
+            const content = lines.join('\n');
             const filePath = `src/content/tools/${slug}.md`;
 
             // Check if file already exists
@@ -77,22 +125,22 @@ jobs:
             }
 
             // Write the file
-            fs.writeFileSync(filePath, frontmatter);
+            fs.writeFileSync(filePath, content);
 
-            // Git commit and push
-            const { execSync } = require('child_process');
-            execSync('git config user.name "Tiny Tool Town Bot"');
-            execSync('git config user.email "bot@tinytooltown.com"');
-            execSync(`git add "${filePath}"`);
-            execSync(`git commit -m "🏠 Add ${name} (from issue #${issue.number})"`);
-            execSync('git push');
+            // Git commit and push using array args to avoid shell injection
+            const { execFileSync } = require('child_process');
+            execFileSync('git', ['config', 'user.name', 'Tiny Tool Town Bot']);
+            execFileSync('git', ['config', 'user.email', 'bot@tinytooltown.com']);
+            execFileSync('git', ['add', filePath]);
+            execFileSync('git', ['commit', '-m', `🏠 Add ${sanitize(name)} (from issue #${issue.number})`]);
+            execFileSync('git', ['push']);
 
             // Close the issue with a comment
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
-              body: `🏘️ **Welcome to Tiny Tool Town!**\n\n**${name}** has been added and will be live on [tinytooltown.com](https://www.tinytooltown.com/tools/${slug}/) once the site rebuilds (about 1 minute).\n\nThanks for sharing your tool! ✨`
+              body: `🏘️ **Welcome to Tiny Tool Town!**\n\n**${sanitize(name)}** has been added and will be live on [tinytooltown.com](https://www.tinytooltown.com/tools/${slug}/) once the site rebuilds (about 1 minute).\n\nThanks for sharing your tool! ✨`
             });
 
             await github.rest.issues.update({
@@ -102,4 +150,4 @@ jobs:
               state: 'closed'
             });
 
-            console.log(`✅ Added ${name} as ${filePath}`);
+            console.log(`✅ Added ${sanitize(name)} as ${filePath}`);
