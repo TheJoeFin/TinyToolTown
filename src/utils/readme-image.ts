@@ -17,12 +17,18 @@ export async function getReadmeImage(githubUrl: string): Promise<string | null> 
 
       const readme = await res.text();
 
-      // Match markdown images: ![alt](url)
-      const mdMatch = readme.match(/!\[[^\]]*\]\(([^)]+)\)/);
-      // Match HTML images: <img src="url"
-      const htmlMatch = readme.match(/<img[^>]+src=["']([^"']+)["']/i);
+      // Skip badges/shields — find the first "real" image
+      const badgeHosts = ['img.shields.io', 'badge.fury.io', 'badgen.net', 'badges.', 'coveralls.io', 'codecov.io', 'travis-ci.', 'ci.appveyor.com', 'github.com/workflows'];
+      const isBadge = (url: string) => badgeHosts.some(h => url.includes(h)) || url.includes('/badge');
 
-      const imgPath = mdMatch?.[1] || htmlMatch?.[1] || null;
+      // Match all markdown images: ![alt](url)
+      const mdMatches = [...readme.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)];
+      const firstRealMd = mdMatches.find(m => !isBadge(m[1]));
+      // Match all HTML images: <img src="url"
+      const htmlMatches = [...readme.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)];
+      const firstRealHtml = htmlMatches.find(m => !isBadge(m[1]));
+
+      const imgPath = firstRealMd?.[1] || firstRealHtml?.[1] || null;
       if (!imgPath) continue;
 
       // Resolve relative URLs to absolute GitHub raw URLs
