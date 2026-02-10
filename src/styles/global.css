@@ -48,7 +48,7 @@
   --color-bg-card: #c0c0c0;
   --color-bg-hover: #d0d0d0;
   --color-text: #ffff00;
-  --color-text-muted: #ffcc00;
+  --color-text-muted: #00ffff;
   --color-primary: #ff00ff;
   --color-secondary: #ff0000;
   --color-tertiary: #00ff00;
@@ -106,6 +106,14 @@
 }
 
 [data-theme="geocities"] .card-tagline {
+  color: #000080 !important;
+}
+
+[data-theme="geocities"] .card-lang {
+  color: #000080 !important;
+}
+
+[data-theme="geocities"] .author-name {
   color: #000080 !important;
 }
 
