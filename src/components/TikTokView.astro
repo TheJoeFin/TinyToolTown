@@ -34,13 +34,11 @@ const HUE_OFFSET_SECONDARY = 53;
           {/* Content layer */}
           <div class="panel-content">
             <div class="content-wrapper">
-              <div class="tool-thumbnail">
-                {hasImage ? (
-                  <img src={tool.data.thumbnail} alt={tool.data.name} />
-                ) : (
+              {!hasImage && (
+                <div class="tool-thumbnail">
                   <div class="thumb-placeholder">🔧</div>
-                )}
-              </div>
+                </div>
+              )}
               
               <h2 class="tool-heading">{tool.data.name}</h2>
               <p class="tool-description">{tool.data.tagline}</p>
@@ -123,7 +121,8 @@ const HUE_OFFSET_SECONDARY = 53;
 
     if (!viewer || panels.length === 0) return;
 
-    panels[0]?.classList.add('panel-visible');
+    // Initialize panel positions
+    updatePanelPositions();
     exitBtn?.addEventListener('click', hideViewer);
 
     // Touch handling
@@ -148,6 +147,20 @@ const HUE_OFFSET_SECONDARY = 53;
       
       favBtn?.addEventListener('click', toggleFavorite);
       shareBtn?.addEventListener('click', sharePanel);
+    });
+  }
+  
+  function updatePanelPositions() {
+    const panels = document.querySelectorAll('.tool-panel');
+    panels.forEach((panel, index) => {
+      panel.classList.remove('panel-visible', 'panel-above', 'panel-below');
+      if (index === viewerState.index) {
+        panel.classList.add('panel-visible');
+      } else if (index < viewerState.index) {
+        panel.classList.add('panel-above');
+      } else {
+        panel.classList.add('panel-below');
+      }
     });
   }
 
@@ -217,18 +230,16 @@ const HUE_OFFSET_SECONDARY = 53;
   function advancePanel() {
     const panels = document.querySelectorAll('.tool-panel');
     if (viewerState.index < panels.length - 1) {
-      panels[viewerState.index].classList.remove('panel-visible');
       viewerState.index++;
-      panels[viewerState.index].classList.add('panel-visible');
+      updatePanelPositions();
     }
   }
 
   function retreatPanel() {
     const panels = document.querySelectorAll('.tool-panel');
     if (viewerState.index > 0) {
-      panels[viewerState.index].classList.remove('panel-visible');
       viewerState.index--;
-      panels[viewerState.index].classList.add('panel-visible');
+      updatePanelPositions();
     }
   }
 
@@ -307,9 +318,7 @@ const HUE_OFFSET_SECONDARY = 53;
       viewerState.index = 0;
       document.body.style.overflow = 'hidden';
       
-      const panels = document.querySelectorAll('.tool-panel');
-      panels.forEach((p, i) => p.classList.toggle('panel-visible', i === 0));
-      
+      updatePanelPositions();
       loadFavoriteStates();
     }
   };
@@ -369,15 +378,23 @@ const HUE_OFFSET_SECONDARY = 53;
     inset: 0;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1),
-                transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translateY(105%);
+    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(100%);
   }
 
   .tool-panel.panel-visible {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0);
+  }
+  
+  .tool-panel.panel-above {
+    transform: translateY(-100%);
+  }
+  
+  .tool-panel.panel-below {
+    transform: translateY(100%);
   }
 
   .panel-bg {
@@ -389,7 +406,7 @@ const HUE_OFFSET_SECONDARY = 53;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    filter: blur(22px) brightness(0.38);
+    filter: brightness(0.45);
   }
 
   .bg-gradient {
