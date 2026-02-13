@@ -97,6 +97,13 @@ jobs:
             // Sanitize strings for YAML — strip newlines and control chars
             const sanitize = (s) => s.replace(/[\r\n]+/g, ' ').replace(/[^\x20-\x7E\xA0-\uFFFF]/g, '').trim();
             const yamlStr = (s) => `"${sanitize(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+            const safeImageExt = (urlStr) => {
+              const allowed = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+              try {
+                const ext = require('path').extname(new URL(urlStr).pathname).split('?')[0].toLowerCase();
+                return allowed.includes(ext) ? ext : '.png';
+              } catch { return '.png'; }
+            };
 
             // Build tags array
             const tags = tagsRaw.split(',').map(t => sanitize(t)).filter(Boolean);
@@ -127,7 +134,16 @@ jobs:
               `github_url: "${sanitize(github_url)}"`,
             ];
             if (website_url && website_url !== '_No response_') {
-              lines.push(`website_url: "${sanitize(website_url)}"`);
+              if (!/^https?:\/\/.+/.test(website_url)) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: '⚠️ Website URL must start with `http://` or `https://`.'
+                });
+                return;
+              }
+              lines.push(`website_url: ${yamlStr(website_url)}`);
             }
             lines.push(`tags: [${tags.map(t => `"${t.replace(/"/g, '')}"`).join(', ')}]`);
             if (language && language !== '_No response_') {
@@ -191,7 +207,7 @@ jobs:
             if (imageFromComment) {
               // Use the uploaded image from comments
               try {
-                const ext = require('path').extname(new URL(imageFromComment).pathname).split('?')[0] || '.png';
+                const ext = safeImageExt(imageFromComment);
                 const thumbFile = `${slug}${ext}`;
                 const thumbDest = `public/thumbnails/${thumbFile}`;
                 if (!fs.existsSync('public/thumbnails')) fs.mkdirSync('public/thumbnails', { recursive: true });
@@ -270,7 +286,7 @@ jobs:
                   imageCandidates.sort((a, b) => b.size - a.size);
                   const bestImage = imageCandidates[0];
                   
-                  const ext = require('path').extname(new URL(bestImage.url).pathname).split('?')[0] || '.png';
+                  const ext = safeImageExt(bestImage.url);
                   const thumbFile = `${slug}${ext}`;
                   const thumbDest = `public/thumbnails/${thumbFile}`;
                   if (!fs.existsSync('public/thumbnails')) fs.mkdirSync('public/thumbnails', { recursive: true });
