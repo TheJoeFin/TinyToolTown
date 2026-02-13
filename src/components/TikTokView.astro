@@ -5,6 +5,10 @@ interface Props {
 }
 
 const { tools } = Astro.props;
+
+// Constants for gradient generation - creates varied color backgrounds for tools without thumbnails
+const HUE_OFFSET_PRIMARY = 37;
+const HUE_OFFSET_SECONDARY = 53;
 ---
 
 <div id="shorts-viewer" class="viewer-hidden">
@@ -22,7 +26,7 @@ const { tools } = Astro.props;
             {hasImage ? (
               <img src={tool.data.thumbnail} alt="" class="bg-image" />
             ) : (
-              <div class="bg-gradient" style={`background: linear-gradient(135deg, hsl(${index * 37}, 70%, 50%), hsl(${index * 53}, 60%, 40%))`}></div>
+              <div class="bg-gradient" style={`background: linear-gradient(135deg, hsl(${index * HUE_OFFSET_PRIMARY}, 70%, 50%), hsl(${index * HUE_OFFSET_SECONDARY}, 60%, 40%))`}></div>
             )}
             <div class="bg-dim"></div>
           </div>
@@ -101,12 +105,16 @@ const { tools } = Astro.props;
 </div>
 
 <script>
+  // Navigation state
   let viewerState = {
     index: 0,
     active: false,
     swipeStart: 0,
     swiping: false
   };
+
+  // Minimum distance (in pixels) for a swipe to be recognized
+  const SWIPE_THRESHOLD = 60;
 
   function setupViewer() {
     const viewer = document.getElementById('shorts-viewer');
@@ -158,7 +166,7 @@ const { tools } = Astro.props;
     const swipeEnd = e.changedTouches[0].clientY;
     const distance = viewerState.swipeStart - swipeEnd;
 
-    if (Math.abs(distance) > 60) {
+    if (Math.abs(distance) > SWIPE_THRESHOLD) {
       distance > 0 ? advancePanel() : retreatPanel();
     }
     
@@ -179,7 +187,7 @@ const { tools } = Astro.props;
     const dragEnd = e.clientY;
     const distance = viewerState.swipeStart - dragEnd;
 
-    if (Math.abs(distance) > 60) {
+    if (Math.abs(distance) > SWIPE_THRESHOLD) {
       distance > 0 ? advancePanel() : retreatPanel();
     }
     
@@ -265,9 +273,11 @@ const { tools } = Astro.props;
     if (navigator.share) {
       navigator.share({
         title: toolTitle || 'Tiny Tool Town',
-        text: `Check out "${toolTitle}" on Tiny Tool Town! 🏘️`,
+        text: toolTitle ? `Check out "${toolTitle}" on Tiny Tool Town! 🏘️` : 'Check out this tool on Tiny Tool Town! 🏘️',
         url: currentUrl,
-      }).catch(() => {});
+      }).catch(() => {
+        // User cancelled or share failed - this is expected behavior, no action needed
+      });
     } else {
       navigator.clipboard.writeText(currentUrl).then(() => {
         const textEl = btn.querySelector('.action-text');
