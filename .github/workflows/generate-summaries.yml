@@ -1,0 +1,93 @@
+name: Generate AI Summaries
+
+on:
+  schedule:
+    - cron: '0 5 * * 0'  # Sunday 5am UTC (after thumbnail refresh at 4am)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Summary mode'
+        required: true
+        default: 'new'
+        type: choice
+        options:
+          - new       # Only tools without AI summaries
+          - all       # Regenerate all summaries
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore tools/TinyToolSummarizer/TinyToolSummarizer.csproj
+
+      - name: Build summarizer
+        run: dotnet build tools/TinyToolSummarizer/TinyToolSummarizer.csproj --configuration Release --no-restore
+
+      - name: Check for tools needing summaries
+        id: check
+        run: |
+          COUNT=$(grep -rL "ai_summary:" src/content/tools/*.md 2>/dev/null | wc -l)
+          echo "missing_count=$COUNT" >> $GITHUB_OUTPUT
+          echo "📊 Tools without AI summaries: $COUNT"
+
+      - name: Generate AI summaries
+        if: steps.check.outputs.missing_count != '0' || github.event.inputs.mode == 'all'
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+        run: |
+          MODE_FLAG=""
+          if [ "${{ github.event.inputs.mode }}" = "all" ]; then
+            MODE_FLAG="--all"
+          fi
+          dotnet run --project tools/TinyToolSummarizer -- \
+            --headless $MODE_FLAG \
+            src/content/tools
+
+      - name: Check for changes
+        id: diff
+        run: |
+          git diff --quiet src/content/tools/ && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit and push
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/content/tools/
+          UPDATED=$(git diff --cached --name-only | wc -l)
+          git commit -m "✨ Update AI summaries for $UPDATED tools [bot]"
+
+          # Retry push with rebase in case another workflow pushed
+          for i in 1 2 3 4 5; do
+            git push origin main && break
+            echo "⚠️ Push failed (attempt $i), pulling and retrying..."
+            git pull --rebase origin main
+          done
+
+      - name: Trigger deploy
+        if: steps.diff.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy.yml',
+              ref: 'main'
+            });
+            console.log('🚀 Deploy triggered');
