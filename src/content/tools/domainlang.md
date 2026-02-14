@@ -11,6 +11,8 @@ language: "TypeScript"
 license: "Apache-2.0"
 date_added: "2026-02-14"
 featured: false
+ai_summary: "A domain-specific language for Domain-Driven Design that lives right in your repo — define bounded contexts, terminology, and context maps in code that your team can review in PRs just like any other source file."
+ai_features: ["🏗️ DDD-aligned syntax for domains, bounded contexts, teams, and context maps", "🧠 VS Code extension with autocomplete, hover docs, and go-to-definition", "✅ Validation catches modeling issues before they become architecture debt", "📖 Define your ubiquitous language with terminology blocks right in the model"]
 ---
 
 DomainLang is a developer tool for authoring software architecture models right inside VS Code. You write small `.dlang` text files describing your domains, teams, bounded contexts, and integrations — and the extension gives you the full authoring experience: intelligent autocomplete that suggests valid DDD patterns, hover documentation that explains your model elements in context, go-to-definition to jump between related concepts, and real-time validation that catches modeling mistakes as you type.

@@ -9,6 +9,8 @@ language: "Go"
 license: "GPL-3.0"
 date_added: "2026-02-13"
 featured: false
+ai_summary: "Tame your chaotic comic book collection by converting CBR and PDF files into properly formatted CBZ archives — complete with sensible file naming so your reader actually sorts things correctly."
+ai_features: ["🔄 Converts CBR and PDF files to clean CBZ format", "🔢 Auto-renames images with leading zeros so page 2 comes before page 10", "📝 Consistent series naming turns chaos into Series Name T01, T02, etc", "🚀 Concurrent processing handles your entire collection at once"]
 ---
 
 ✨ Features

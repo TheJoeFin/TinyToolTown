@@ -10,6 +10,8 @@ language: "Golang"
 license: "MIT"
 date_added: "2026-02-12"
 featured: false
+ai_summary: "Your codebase whisperer that digs up all the hidden tech debt your AI agents keep stumbling over — TODOs, vulnerable dependencies, bus-factor risks, and stale branches surfaced in one scan before anyone has to ask."
+ai_features: ["🔍 Seven collectors cover TODOs, vulnerabilities, dependency health, bus-factor risk, and more", "🛡️ Multi-ecosystem vulnerability scanning across npm, pip, Go, Rust, and friends", "🤖 Optional LLM pass adds smart clustering and priority inference", "📤 Output as Markdown, JSON, agent tasks, or Beads JSONL for your CI pipeline"]
 ---
 
 Codebase archaeology for [Beads](https://github.com/steveyegge/beads). Mine your repo for actionable work items, output them as Beads-formatted issues, and give your AI agents instant situational awareness.

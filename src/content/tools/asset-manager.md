@@ -8,6 +8,8 @@ tags: ["ios", "finance", "couples", "management"]
 language: "JavaScript"
 date_added: "2026-02-13"
 featured: false
+ai_summary: "A self-hosted financial dashboard that uses Google Gemini AI to automatically extract expenses from your bank statements and receipts — just upload a PDF and watch it magically parse out all those transactions you were dreading to enter manually."
+ai_features: ["🤖 AI-powered PDF processing extracts amounts, dates, and categories from financial documents", "💑 Couples mode links partners for combined finance views and shared expense tracking", "📊 Interactive charts showing asset progression, income vs expenses, and category trends", "🔒 AES-256 encrypted storage with multi-user isolation and HTTPS by default"]
 ---
 
 I just really wanted an expense tracker app that really works, easy to use and faster to upload expanses in a batch. With a plus that you can manage expanses with your partner. The main features are:

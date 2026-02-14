@@ -10,6 +10,8 @@ language: "Python"
 license: "MIT"
 date_added: "2026-02-13"
 featured: false
+ai_summary: "A no-nonsense CLI that scans your AWS account for the security slip-ups that keep you up at night — public buckets, open ports, unencrypted volumes, and users without MFA all surfaced in one clean report."
+ai_features: ["🔍 Scans S3, EC2 security groups, EBS volumes, and IAM for common misconfigurations", "🤖 Natural language queries powered by Amazon Bedrock let you ask security questions in plain English", "📊 Output as table, JSON, or CSV for easy integration", "⚡ One command scan across your entire AWS environment"]
 ---
 
 AWS Sentinel is a powerful command-line security scanner for AWS resources. It helps identify common security issues and misconfigurations in your AWS environment. Now featuring natural language queries powered by Amazon Bedrock!

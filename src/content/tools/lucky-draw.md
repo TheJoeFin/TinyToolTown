@@ -11,6 +11,8 @@ language: "JavaScript"
 license: "MIT"
 date_added: "2026-02-13"
 featured: false
+ai_summary: "A delightfully simple lottery picker for when you need to randomly draw numbers from a range — perfect for raffles, classroom picks, or deciding who buys the next round."
+ai_features: ["🎲 Custom min/max range with 2-second suspenseful animation", "🔒 Automatically prevents duplicate numbers from being drawn twice", "📊 Keeps a visual history of all drawn numbers in neat rows", "⚡ Pure HTML/CSS/JS with zero dependencies, works offline instantly"]
 ---
 
 This is a simple web page for drawing random numbers.

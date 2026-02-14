@@ -10,6 +10,8 @@ language: "Ruby"
 license: "MIT"
 date_added: "2026-02-13"
 featured: false
+ai_summary: "Mission control for your fleet of AI coding agents — a kanban dashboard that lets you assign tasks, watch agents work in real-time, and manage the beautiful chaos of multiple AI assistants doing your bidding simultaneously."
+ai_features: ["🎯 Kanban boards with agent assignment and real-time WebSocket activity feeds", "🤖 Live agent terminal viewer with session transcripts and hover previews", "🔄 Smart model selection with rate limit detection and auto-fallback", "✅ Built-in validation system runs tests automatically and updates task status"]
 ---
 
 ClawTrol is a kanban-style dashboard for managing AI coding agents. Track tasks, assign work to agents (Claude, Codex, Gemini, etc.), monitor their activity in real-time with WebSocket updates, and see results — all from a single board.

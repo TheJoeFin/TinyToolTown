@@ -10,6 +10,8 @@ language: "Python"
 license: "MIT"
 date_added: "2026-02-14"
 featured: false
+ai_summary: "A ready-to-go research lab for AI document analysis that handles all the infrastructure headaches so you can focus on the fun stuff — experimenting with RAG pipelines and watching LLMs judge each others work."
+ai_features: ["🔬 Multi-stage RAG workflow with built-in LLM-as-a-Judge evaluation", "🎛️ No-code workflow control via n8n visual interface", "🐳 One docker-compose command spins up the whole ecosystem", "📊 Clean Streamlit UI for human feedback and agent report comparison"]
 ---
 
 # FROAV:Framework for RAG Observation and Agent Verification

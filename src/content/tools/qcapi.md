@@ -9,6 +9,8 @@ language: "python"
 license: "MIT"
 date_added: "2026-02-13"
 featured: false
+ai_summary: "A handy little Python CLI and Windows tray app that lets you poke at IBM Quantum's Qiskit Runtime API without firing up the full SDK — perfect for quick endpoint checks and keeping tabs on your quantum jobs."
+ai_features: ["🔬 Quick CLI access to backends, programs, jobs, and versions endpoints", "🖥️ Windows tray app shows your quantum access status and latest run ID", "🔑 Auto-reads credentials from your existing qiskit-ibm.json config", "🐍 Works as both a CLI tool and importable Python library"]
 ---
 
 Windows tray app

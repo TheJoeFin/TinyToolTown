@@ -11,6 +11,8 @@ language: "JavaScript"
 license: "MIT"
 date_added: "2026-02-13"
 featured: false
+ai_summary: "A throwback to the classic Windows help viewer era but modernized — browse Markdown and HTML documentation directly from ZIP files in your browser, no server required, completely offline-capable."
+ai_features: ["📦 Opens docs from ZIP archives or local directories with zero backend needed", "📤 Export chapters or entire help files to HTML, Markdown, LaTeX, or ePub", "📝 Add personal notes on paragraphs as you read", "🌐 Multi-language support for both viewer interface and content"]
 ---
 
 This tool aims to offer an alternative to the help viewers that used to be around. This tool renders markdown files (or HTML files) - help chapters - in an elegant editor with rich set of tools to make reading help files as enjoyable as possible. The minimum to enter this browser is one MD file, so that at least some of the features, such as full-text search, work. No vendor lock-in. Another interesting feature could be the export of chapter texts in various formats, such as md, ePub, TeX, RTF, HTML or a stylized static copy of a web page.

@@ -8,6 +8,8 @@ thumbnail: "/thumbnails/contributor-history.png"
 tags: ["fun", "charts"]
 date_added: "2026-02-14"
 featured: false
+ai_summary: "Finally, a star-history equivalent for the metric that actually matters — watching contributor communities grow over time tells you way more about project health than vanity stars ever could."
+ai_features: ["📊 Cumulative contributor growth charts track week-by-week community building", "🔀 Compare multiple repos side-by-side with optional Day 0 alignment", "✏️ Optional XKCD-style hand-drawn sketch rendering for extra charm", "🔗 Shareable URLs and embeddable snippets for your README"]
 ---
 
 Contributor History is the missing growth chart for GitHub — like star-history.com (https://star-history.com), but instead of stars it tracks contributors!

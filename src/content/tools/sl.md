@@ -10,6 +10,8 @@ tags: ["cli", "train", "fun"]
 language: "rust"
 date_added: "2026-02-13"
 featured: false
+ai_summary: "The classic Unix prank that punishes your ls typos with a steam locomotive chugging across your terminal — because muscle memory needs consequences, and those consequences should involve ASCII trains."
+ai_features: ["🚂 A glorious steam locomotive animation plays when you accidentally type sl", "🎭 Multiple modes including accident (people cry for help!), flying, and different train models", "📦 Pipe output into it to print messages on rolling train cars", "🌐 Embeddable web version for sharing the chaos on your own pages"]
 ---
 
 I'm not the original creator, original work [mtoyoda/sl](https://github.com/mtoyoda/sl).

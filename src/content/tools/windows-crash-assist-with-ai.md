@@ -10,6 +10,8 @@ language: "C#"
 license: "GPL-3.0"
 date_added: "2026-02-13"
 featured: false
+ai_summary: "Stop staring at cryptic Windows crash logs wondering what went wrong — this handy app detects system crashes and uses a local Phi-4 AI model to actually explain what happened and how to fix it."
+ai_features: ["🔍 Automatically detects Windows crash events and extracts fault bucket details", "🤖 Local Phi-4 AI model analyzes crashes and suggests actual solutions", "🖥️ Modern WPF interface makes crash hunting almost pleasant", "🔒 Runs entirely on-device with ONNX Runtime so your crash data stays private"]
 ---
 
 A Windows application that detects system crashes and uses AI (Phi-4 model) to provide explanations and solutions for crash events.

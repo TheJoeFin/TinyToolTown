@@ -10,6 +10,8 @@ language: "C#"
 license: "MIT"
 date_added: "2026-02-14"
 featured: false
+ai_summary: "A refreshingly focused Visual Studio extension that does exactly one thing — makes your Gherkin feature files look gorgeous with proper syntax highlighting, no bloat, no test runners, just pretty colors."
+ai_features: ["🎨 Highlights keywords, comments, tags, parameters, doc strings, and tables beautifully", "🌍 Multi-language support for English, German, French, Spanish and more out of the box", "⚙️ Fully customizable colors via VS Fonts and Colors settings", "🪶 Intentionally minimal with zero feature creep"]
 ---
 
 Full blown BDD tools are awesome, but if you want to add feature files to your project as specs for LLMs to see, those tools can be overkill.  Not ready to swim in the deep end of the BDD pool?  Get your feet wet with this simple syntax highlighter. 

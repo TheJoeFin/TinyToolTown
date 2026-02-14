@@ -10,6 +10,8 @@ language: "Typescript"
 license: "MIT"
 date_added: "2026-02-13"
 featured: false
+ai_summary: "Stop asking LLMs to format documents and let them focus on content — this clever engine takes structured JSON from any LLM and renders beautiful, deterministic documents like invoices, timetables, and agendas every single time."
+ai_features: ["📋 Schema-driven rendering means same JSON always produces same document", "✏️ Double-click inline editing lets you tweak anything before export", "📄 Growing library of document types from invoices to weekly agendas", "🔒 Zod schemas ensure type safety and validation before rendering"]
 ---
 
 An Open-Source, Schema-Driven Rendering Engine for LLM-Generated Documents

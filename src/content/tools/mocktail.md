@@ -9,6 +9,8 @@ language: "Go, JS"
 license: "MIT"
 date_added: "2026-02-13"
 featured: false
+ai_summary: "Spin up fake APIs in seconds with this tiny 13MB container that comes with a slick dashboard — perfect for frontend devs tired of waiting on backend teams or anyone who needs to test error handling without breaking production."
+ai_features: ["🍸 Create mocks for any HTTP method with custom status codes and response delays", "✨ Modern dashboard with JSON editor, syntax highlighting, and auto-generated code snippets", "🎲 Alpha feature randomizes fake data with 20+ faker types for realistic responses", "📦 SQLite persistence and easy import/export so your mocks travel with you"]
 ---
 
 Mocktail solves the “I need a backend right now” problem. It’s a tiny, Docker-ready mock server that lets you create REST API endpoints, return any response, add delays, and watch live traffic through a built-in request inspector.

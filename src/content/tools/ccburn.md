@@ -10,6 +10,8 @@ language: "Python"
 license: "MIT"
 date_added: "2026-02-13"
 featured: false
+ai_summary: "Keep tabs on your Claude Code token consumption with live burn-up charts that show you exactly how fast you're spending — complete with pace indicators that tell you if you're 🧊 cool or 🚨 too hot before you hit the wall."
+ai_features: ["📊 Real-time burn-up charts with session and weekly usage visualization", "🌡️ Pace indicators show if youre cool, on track, or burning too fast", "🖥️ Compact single-line output perfect for tmux status bars", "📦 Install via npm, pip, or winget — whatever floats your boat"]
 ---
 
 ccburn is a terminal tool for visualizing Claude Code token usage with live burn-up charts. I built it because I kept hitting my Claude Code usage limits without warning — now I can see my burn rate in real time and pace myself.
