@@ -16,6 +16,7 @@ const tools = defineCollection({
     date_added: z.string(),
     featured: z.boolean().optional().default(false),
     ai_summary: z.string().optional(),
+    ai_features: z.array(z.string()).optional(),
   }),
 });
 

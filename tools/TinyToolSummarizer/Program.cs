@@ -25,8 +25,68 @@ if (!Directory.Exists(contentDir))
 
 Console.WriteLine($"📂 Tools directory: {contentDir}");
 
-var mdFiles = Directory.GetFiles(contentDir, "*.md");
-Console.WriteLine($"📋 Found {mdFiles.Length} tool files\n");
+var allMdFiles = Directory.GetFiles(contentDir, "*.md");
+Console.WriteLine($"📋 Found {allMdFiles.Length} tool files\n");
+
+// --- Run mode selection ---
+var mode = 0; // 0 = NewOnly, 1 = All, 2 = Single
+string? singleTarget = null;
+
+Console.ForegroundColor = ConsoleColor.Yellow;
+Console.WriteLine("🎯 How would you like to run?");
+Console.ResetColor();
+Console.WriteLine("   1. Only tools without AI summaries (default)");
+Console.WriteLine("   2. Re-run on ALL tools (overwrite existing)");
+Console.WriteLine("   3. Pick a specific tool");
+Console.Write("\nEnter choice (1-3) [default: 1]: ");
+
+var modeChoice = Console.ReadLine()?.Trim();
+switch (modeChoice)
+{
+    case "2":
+        mode = 1; // All
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        Console.WriteLine("🔄 Will re-generate ALL summaries\n");
+        Console.ResetColor();
+        break;
+    case "3":
+        mode = 2; // Single
+        // List tools for selection
+        var toolNames = allMdFiles
+            .Select((f, i) => (Index: i + 1, Name: Path.GetFileNameWithoutExtension(f)))
+            .ToList();
+
+        Console.WriteLine();
+        foreach (var t in toolNames)
+            Console.WriteLine($"   {t.Index,3}. {t.Name}");
+
+        Console.Write($"\nEnter tool number (1-{toolNames.Count}): ");
+        var toolChoice = Console.ReadLine()?.Trim();
+        if (int.TryParse(toolChoice, out var toolIndex) && toolIndex >= 1 && toolIndex <= toolNames.Count)
+        {
+            singleTarget = allMdFiles[toolIndex - 1];
+            Console.ForegroundColor = ConsoleColor.Magenta;
+            Console.WriteLine($"🎯 Will process: {Path.GetFileName(singleTarget)}\n");
+            Console.ResetColor();
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("❌ Invalid selection. Exiting.");
+            Console.ResetColor();
+            return;
+        }
+        break;
+    default:
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        Console.WriteLine("⏭️  Will skip tools that already have AI summaries\n");
+        Console.ResetColor();
+        break;
+}
+
+var mdFiles = mode == 2 && singleTarget != null
+    ? new[] { singleTarget }
+    : allMdFiles;
 
 // Check prerequisites
 Console.WriteLine("🔍 Checking Copilot prerequisites...");
@@ -70,14 +130,21 @@ try
             var content = await File.ReadAllTextAsync(mdFile);
             var parsed = FrontmatterParser.Parse(content);
 
-            // Skip if already has an AI summary
-            if (parsed.Frontmatter.ContainsKey("ai_summary"))
+            // Skip if already has an AI summary (unless re-running all or single)
+            if (mode == 0 && parsed.Frontmatter.ContainsKey("ai_summary"))
             {
                 Console.ForegroundColor = ConsoleColor.DarkGray;
                 Console.WriteLine("⏭️  already has ai_summary");
                 Console.ResetColor();
                 skipped++;
                 continue;
+            }
+
+            // If re-running, strip existing ai_summary and ai_features first
+            if (mode != 0 && parsed.Frontmatter.ContainsKey("ai_summary"))
+            {
+                content = FrontmatterParser.RemoveField(content, "ai_summary");
+                content = FrontmatterParser.RemoveField(content, "ai_features");
             }
 
             if (!parsed.Frontmatter.TryGetValue("github_url", out var githubUrl))
@@ -114,10 +181,10 @@ try
             }
 
             // Generate AI summary
-            var summary = await SummaryGenerator.GenerateSummaryAsync(
+            var rawResponse = await SummaryGenerator.GenerateSummaryAsync(
                 session, toolName.Trim('"'), tagline.Trim('"'), readme ?? "");
 
-            if (string.IsNullOrWhiteSpace(summary))
+            if (string.IsNullOrWhiteSpace(rawResponse))
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("❌ empty summary");
@@ -126,12 +193,28 @@ try
                 continue;
             }
 
-            // Write the ai_summary back into the frontmatter
+            // Parse the structured response into summary + features
+            var (summary, features) = SummaryGenerator.ParseResponse(rawResponse);
+
+            // Write the ai_summary and ai_features back into the frontmatter
             var updatedContent = FrontmatterParser.AddField(content, "ai_summary", summary);
+            if (!string.IsNullOrWhiteSpace(features))
+            {
+                var featureList = features.Split(" | ", StringSplitOptions.RemoveEmptyEntries)
+                    .Select(f => f.Trim())
+                    .Where(f => !string.IsNullOrEmpty(f))
+                    .ToArray();
+                updatedContent = FrontmatterParser.AddArrayField(updatedContent, "ai_features", featureList);
+            }
             await File.WriteAllTextAsync(mdFile, updatedContent);
 
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"✅ \"{summary[..Math.Min(60, summary.Length)]}...\"");
+            if (!string.IsNullOrWhiteSpace(features))
+            {
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine($"   Features: {features}");
+            }
             Console.ResetColor();
             processed++;
         }

@@ -57,4 +57,47 @@ public static class FrontmatterParser
 
         return $"{before}\n{newField}\n{after}";
     }
+
+    public static string AddArrayField(string content, string fieldName, string[] values)
+    {
+        if (!content.StartsWith("---"))
+            return content;
+
+        var endIndex = content.IndexOf("---", 3, StringComparison.Ordinal);
+        if (endIndex < 0)
+            return content;
+
+        // Build YAML array: ai_features: ["item1", "item2"]
+        var escaped = values.Select(v => $"\"{ v.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"");
+        var newField = $"{fieldName}: [{string.Join(", ", escaped)}]";
+
+        var before = content[..endIndex].TrimEnd();
+        var after = content[endIndex..];
+
+        return $"{before}\n{newField}\n{after}";
+    }
+
+    public static string RemoveField(string content, string fieldName)
+    {
+        if (!content.StartsWith("---"))
+            return content;
+
+        var endIndex = content.IndexOf("---", 3, StringComparison.Ordinal);
+        if (endIndex < 0)
+            return content;
+
+        var frontmatterBlock = content[3..endIndex];
+        var lines = frontmatterBlock.Split('\n');
+        var filteredLines = lines
+            .Where(line =>
+            {
+                var trimmed = line.Trim();
+                return !trimmed.StartsWith($"{fieldName}:");
+            })
+            .ToList();
+
+        var newFrontmatter = string.Join('\n', filteredLines);
+        var after = content[endIndex..];
+        return $"---{newFrontmatter}{after}";
+    }
 }

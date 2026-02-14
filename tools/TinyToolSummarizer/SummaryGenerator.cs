@@ -12,15 +12,20 @@ public static class SummaryGenerator
     {
         var prompt = $"""
             You are a witty, fun tech writer for "Tiny Tool Town" — a curated collection of small, 
-            delightful open source tools. Write a brief AI summary for the following tool.
+            delightful open source tools. Write an AI summary for the following tool.
             
-            Start with a fun emoji bullet point that captures the vibe of the tool (e.g. 🎮 for games, 
-            🔒 for security, 🎨 for design, ⚡ for performance, 🛠️ for dev tools, etc.). Then write 
-            1-2 playful, enthusiastic sentences about what makes it cool or unique.
+            Format your response EXACTLY like this (use | as separator between items):
             
-            Keep it under 200 characters total. Do NOT use quotes or special YAML characters like colons 
-            in your response. Do NOT include the tool name at the start. Just the emoji and summary text, 
-            nothing else.
+            SUMMARY: A fun, enthusiastic 1-2 sentence overview of what the tool does and why its awesome.
+            FEATURES: 🔥 Feature one | ⚡ Feature two | 🎯 Feature three
+            
+            Rules:
+            - The SUMMARY should be conversational and playful, 1-2 sentences max
+            - Pick 3-4 key features from the README, each prefixed with a fun relevant emoji
+            - Separate features with " | " (space pipe space)
+            - Do NOT use quotes, colons, or newlines in feature text
+            - Do NOT include the tool name in the summary
+            - Keep the whole thing concise but informative
             
             Tool: {toolName}
             Tagline: {tagline}
@@ -66,8 +71,38 @@ public static class SummaryGenerator
         }
 
         var summary = result.ToString().Trim().Trim('"');
-        // Clean up any YAML-unsafe characters
-        summary = summary.Replace("\n", " ").Replace("\r", "").Trim();
+        // Keep newlines intact so ParseResponse can split SUMMARY/FEATURES lines
+        summary = summary.Replace("\r", "").Trim();
         return string.IsNullOrWhiteSpace(summary) ? null : summary;
+    }
+
+    /// <summary>
+    /// Parses the structured AI response into summary and features.
+    /// </summary>
+    public static (string summary, string? features) ParseResponse(string raw)
+    {
+        string summary = raw;
+        string? features = null;
+
+        // Try to extract SUMMARY: and FEATURES: lines
+        var lines = raw.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+            if (trimmed.StartsWith("SUMMARY:", StringComparison.OrdinalIgnoreCase))
+            {
+                summary = trimmed["SUMMARY:".Length..].Trim();
+            }
+            else if (trimmed.StartsWith("FEATURES:", StringComparison.OrdinalIgnoreCase))
+            {
+                features = trimmed["FEATURES:".Length..].Trim();
+            }
+        }
+
+        // Clean up YAML-unsafe characters
+        summary = summary.Replace("\n", " ").Replace("\r", "").Trim();
+        features = features?.Replace("\n", " ").Replace("\r", "").Trim();
+
+        return (summary, features);
     }
 }

@@ -116,6 +116,13 @@ const langColor = tool.data.language ? langColors[tool.data.language] || '#8b949
             <span class="ai-summary-badge">Powered by GitHub Copilot</span>
           </div>
           <p class="ai-summary-text">{tool.data.ai_summary}</p>
+          {tool.data.ai_features && tool.data.ai_features.length > 0 && (
+            <div class="ai-features">
+              {tool.data.ai_features.map((feature: string) => (
+                <span class="ai-feature-pill">{feature}</span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -376,6 +383,26 @@ const langColor = tool.data.language ? langColors[tool.data.language] || '#8b949
     line-height: 1.6;
     margin: 0;
     font-style: italic;
+  }
+
+  .ai-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .ai-feature-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.7rem;
+    background: rgba(139, 92, 246, 0.12);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    color: rgb(196, 181, 253);
+    border-radius: 50px;
+    font-weight: 500;
   }
 
   @media (max-width: 640px) {
