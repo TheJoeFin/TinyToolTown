@@ -56,6 +56,7 @@ jobs:
             }
 
             // Validate GitHub URL format (allow subpaths like /tree/main/subfolder)
+            github_url = github_url.replace('://www.github.com/', '://github.com/');
             if (!/^https:\/\/github\.com\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+(\/.*)?$/.test(github_url)) {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
