@@ -18,47 +18,241 @@ permissions:
   contents: write
   actions: write
 
-env:
-  DOTNET_VERSION: '10.0.x'
-
 jobs:
   summarize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Restore dependencies
-        run: dotnet restore tools/TinyToolSummarizer/TinyToolSummarizer.csproj
-
-      - name: Build summarizer
-        run: dotnet build tools/TinyToolSummarizer/TinyToolSummarizer.csproj --configuration Release --no-restore
-
-      - name: Check for tools needing summaries
-        id: check
-        run: |
-          COUNT=$(grep -rL "ai_summary:" src/content/tools/*.md 2>/dev/null | wc -l)
-          echo "missing_count=$COUNT" >> $GITHUB_OUTPUT
-          echo "📊 Tools without AI summaries: $COUNT"
-
-      - name: Generate AI summaries
-        if: steps.check.outputs.missing_count != '0' || github.event.inputs.mode == 'all'
+      - name: Generate AI summaries via GitHub Models API
         timeout-minutes: 10
+        uses: actions/github-script@v7
         env:
-          GH_TOKEN: ${{ secrets.COPILOT_TOKEN }}
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN }}
-        run: |
-          MODE_FLAG=""
-          if [ "${{ github.event.inputs.mode }}" = "all" ]; then
-            MODE_FLAG="--all"
-          fi
-          dotnet run --project tools/TinyToolSummarizer -- \
-            --headless $MODE_FLAG \
-            src/content/tools
+          MODELS_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+          SUMMARY_MODE: ${{ github.event.inputs.mode || 'new' }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const TOOLS_DIR = 'src/content/tools';
+            const API_URL = 'https://models.github.ai/inference/chat/completions';
+            const MODEL = 'openai/gpt-4.1-mini';
+            const token = process.env.MODELS_TOKEN;
+            const mode = process.env.SUMMARY_MODE;
+
+            if (!token) {
+              core.setFailed('COPILOT_TOKEN secret is not set');
+              return;
+            }
+
+            const SYSTEM_PROMPT = `You are a witty, fun tech writer for "Tiny Tool Town" — a curated collection of small, delightful open source tools. Write an AI summary for the given tool.
+
+            Format your response EXACTLY like this (use | as separator between items):
+
+            SUMMARY: A fun, enthusiastic 1-2 sentence overview of what the tool does and why its awesome.
+            FEATURES: 🔥 Feature one | ⚡ Feature two | 🎯 Feature three
+
+            Rules:
+            - The SUMMARY should be conversational and playful, 1-2 sentences max
+            - Pick 3-4 key features from the README, each prefixed with a fun relevant emoji
+            - Separate features with " | " (space pipe space)
+            - Do NOT use quotes, colons, or newlines in feature text
+            - Do NOT include the tool name in the summary
+            - Keep the whole thing concise but informative`;
+
+            // Parse frontmatter from a .md file
+            function parseFrontmatter(content) {
+              const match = content.match(/^---\n([\s\S]*?)\n---/);
+              if (!match) return null;
+              const fm = {};
+              for (const line of match[1].split('\n')) {
+                const idx = line.indexOf(':');
+                if (idx > 0) {
+                  const key = line.slice(0, idx).trim();
+                  let val = line.slice(idx + 1).trim();
+                  if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
+                  fm[key] = val;
+                }
+              }
+              fm._raw = match[1];
+              fm._fullMatch = match[0];
+              return fm;
+            }
+
+            // Fetch README from GitHub API with 15s timeout
+            async function fetchReadme(owner, repo) {
+              const controller = new AbortController();
+              const timeout = setTimeout(() => controller.abort(), 15000);
+              try {
+                const resp = await fetch(
+                  `https://api.github.com/repos/${owner}/${repo}/readme`,
+                  {
+                    headers: {
+                      'Accept': 'application/vnd.github.v3.raw',
+                      'Authorization': `Bearer ${token}`,
+                      'User-Agent': 'TinyToolTown-Summarizer'
+                    },
+                    signal: controller.signal
+                  }
+                );
+                if (!resp.ok) return null;
+                let text = await resp.text();
+                if (text.length > 4000) text = text.slice(0, 4000) + '\n\n[truncated]';
+                return text;
+              } catch {
+                return null;
+              } finally {
+                clearTimeout(timeout);
+              }
+            }
+
+            // Call GitHub Models API
+            async function generateSummary(toolName, tagline, readme) {
+              const userPrompt = `Tool: ${toolName}\nTagline: ${tagline}\n\nREADME content:\n${readme}`;
+              const controller = new AbortController();
+              const timeout = setTimeout(() => controller.abort(), 30000);
+              try {
+                const resp = await fetch(API_URL, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify({
+                    model: MODEL,
+                    messages: [
+                      { role: 'system', content: SYSTEM_PROMPT },
+                      { role: 'user', content: userPrompt }
+                    ],
+                    max_tokens: 500,
+                    temperature: 0.7
+                  }),
+                  signal: controller.signal
+                });
+
+                if (!resp.ok) {
+                  const err = await resp.text();
+                  console.log(`  ❌ API error ${resp.status}: ${err.slice(0, 200)}`);
+                  return null;
+                }
+
+                const data = await resp.json();
+                return data.choices?.[0]?.message?.content?.trim() || null;
+              } catch (e) {
+                console.log(`  ❌ Request failed: ${e.message}`);
+                return null;
+              } finally {
+                clearTimeout(timeout);
+              }
+            }
+
+            // Parse AI response into summary + features
+            function parseResponse(raw) {
+              let summary = raw, features = null;
+              for (const line of raw.split('\n')) {
+                const trimmed = line.trim();
+                if (trimmed.toUpperCase().startsWith('SUMMARY:'))
+                  summary = trimmed.slice('SUMMARY:'.length).trim();
+                else if (trimmed.toUpperCase().startsWith('FEATURES:'))
+                  features = trimmed.slice('FEATURES:'.length).trim();
+              }
+              // Clean YAML-unsafe chars
+              summary = summary.replace(/[\n\r]/g, ' ').replace(/"/g, "'").trim();
+              return { summary, features };
+            }
+
+            // Escape for YAML string
+            function yamlStr(s) {
+              return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+            }
+
+            const mdFiles = fs.readdirSync(TOOLS_DIR).filter(f => f.endsWith('.md')).sort();
+            console.log(`📋 Found ${mdFiles.length} tool files`);
+
+            let processed = 0, skipped = 0, failed = 0;
+
+            for (let i = 0; i < mdFiles.length; i++) {
+              const file = mdFiles[i];
+              const filePath = path.join(TOOLS_DIR, file);
+              const content = fs.readFileSync(filePath, 'utf8');
+              const fm = parseFrontmatter(content);
+
+              if (!fm) { console.log(`[${i+1}/${mdFiles.length}] ${file} ⚠️ no frontmatter`); continue; }
+
+              // Skip if already has summary (unless mode=all)
+              if (mode !== 'all' && content.includes('ai_summary:')) {
+                skipped++;
+                continue;
+              }
+
+              console.log(`[${i+1}/${mdFiles.length}] ${file}`);
+
+              // Parse github URL for owner/repo
+              const ghUrl = fm.github_url || '';
+              const urlMatch = ghUrl.match(/github\.com\/([^/]+)\/([^/\s]+)/);
+              if (!urlMatch) {
+                console.log('  ⚠️ no github URL, skipping');
+                failed++;
+                continue;
+              }
+
+              const [, owner, repo] = urlMatch;
+              console.log(`  📡 fetching README: ${owner}/${repo}`);
+              const readme = await fetchReadme(owner, repo);
+              if (!readme) {
+                console.log('  ⚠️ no README found, skipping');
+                failed++;
+                continue;
+              }
+              console.log(`  ✅ README fetched (${readme.length} chars)`);
+
+              // Generate summary
+              console.log(`  🤖 generating summary...`);
+              const raw = await generateSummary(fm.name || file, fm.tagline || '', readme);
+              if (!raw) { failed++; continue; }
+
+              const { summary, features } = parseResponse(raw);
+              console.log(`  ✨ "${summary.slice(0, 60)}..."`);
+
+              // Build new frontmatter lines
+              let newLines = `ai_summary: "${yamlStr(summary)}"`;
+              if (features) {
+                const featureList = features.split(' | ').map(f => f.trim()).filter(Boolean);
+                if (featureList.length > 0) {
+                  newLines += `\nai_features: [${featureList.map(f => `"${yamlStr(f)}"`).join(', ')}]`;
+                }
+              }
+
+              // Insert or replace in frontmatter
+              let newContent;
+              if (content.includes('ai_summary:')) {
+                // Replace existing
+                newContent = content.replace(
+                  /ai_summary:.*(\nai_features:.*)?/,
+                  newLines
+                );
+              } else {
+                // Insert before closing ---
+                newContent = content.replace(
+                  /\n---/,
+                  `\n${newLines}\n---`
+                );
+              }
+
+              fs.writeFileSync(filePath, newContent);
+              processed++;
+              console.log(`  ✅ written`);
+
+              // Small delay to avoid rate limiting
+              await new Promise(r => setTimeout(r, 1000));
+            }
+
+            console.log(`\n═══════════════════════════════════════════════`);
+            console.log(`  ✅ Processed: ${processed}`);
+            console.log(`  ⏭️  Skipped:   ${skipped}`);
+            console.log(`  ❌ Failed:    ${failed}`);
+            console.log(`═══════════════════════════════════════════════`);
 
       - name: Check for changes
         id: diff
