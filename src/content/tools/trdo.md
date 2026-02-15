@@ -1,5 +1,5 @@
 ---
-name: "Tray"
+name: "Trdo"
 tagline: "Tiny internet radio player for your tray."
 author: "Joseph Finney"
 author_github: "TheJoeFin"
