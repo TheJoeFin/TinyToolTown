@@ -10,6 +10,8 @@ language: "C#, JavaScript"
 license: "MIT"
 date_added: "2026-02-15"
 featured: false
+ai_summary: "Reflect on your team's wins and tweaks without the hassle—this nifty tool makes running retrospectives as breezy as sharing a link and voting on ideas in real-time! It’s privacy-first, lightning-fast, and perfect for small squads ready to improve together."
+ai_features: ["⚡ Real-time collaboration with live updates", "🔒 Privacy-focused with no server-side data storage", "🎯 Simple two-column layout for clear reflections", "📥 Export retrospectives as Markdown for easy archiving"]
 ---
 
 Delta Board is a minimalist tool for running lightweight team retrospectives without the bloat of enterprise collaboration software.
