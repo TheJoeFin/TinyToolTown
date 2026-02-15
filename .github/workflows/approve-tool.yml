@@ -4,14 +4,13 @@ on:
   issues:
     types: [labeled]
 
-concurrency:
-  group: approve-tool-${{ github.event.issue.number }}
-  cancel-in-progress: false
-
 jobs:
   add-tool:
     if: github.event.label.name == 'approved'
     runs-on: ubuntu-latest
+    concurrency:
+      group: tool-file-writer
+      cancel-in-progress: false
     permissions:
       contents: write
       issues: write
@@ -98,6 +97,18 @@ jobs:
             // Sanitize strings for YAML — strip newlines and control chars
             const sanitize = (s) => s.replace(/[\r\n]+/g, ' ').replace(/[^\x20-\x7E\xA0-\uFFFF]/g, '').trim();
             const yamlStr = (s) => `"${sanitize(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+            // Strip dangerous HTML from markdown descriptions
+            const sanitizeHtml = (s) => s
+              .replace(/<script[\s>][\s\S]*?<\/script>/gi, '')
+              .replace(/<iframe[\s>][\s\S]*?<\/iframe>/gi, '')
+              .replace(/<object[\s>][\s\S]*?<\/object>/gi, '')
+              .replace(/<embed[^>]*>/gi, '')
+              .replace(/<link[^>]*>/gi, '')
+              .replace(/<style[\s>][\s\S]*?<\/style>/gi, '')
+              .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')
+              .replace(/\bon\w+\s*=\s*\S+/gi, '')
+              .replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href="#"')
+              .replace(/src\s*=\s*["']javascript:[^"']*["']/gi, 'src="#"');
             const safeImageExt = (urlStr) => {
               const allowed = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
               try {
@@ -147,7 +158,7 @@ jobs:
               `tagline: ${yamlStr(tagline)}`,
               `author: ${yamlStr(author)}`,
               `author_github: "${sanitize(author_github).replace(/[^a-zA-Z0-9_-]/g, '')}"`,
-              `github_url: "${sanitize(github_url)}"`,
+              `github_url: ${yamlStr(github_url)}`,
             ];
             if (website_url && website_url !== '_No response_') {
               if (!/^https?:\/\/.+/.test(website_url)) {
@@ -172,7 +183,7 @@ jobs:
             lines.push('featured: false');
             lines.push('---');
             lines.push('');
-            lines.push(description);
+            lines.push(sanitizeHtml(description));
 
             const content = lines.join('\n');
             const filePath = `src/content/tools/${slug}.md`;
@@ -199,6 +210,7 @@ jobs:
             const repoOwner = repoClean.split('/')[3];
             const repoName = repoClean.split('/')[4];
             const MIN_IMAGE_SIZE = 10 * 1024; // 10 KB minimum
+            const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB maximum
             let thumbPath = null;
             
             // First, check issue comments for uploaded images
@@ -229,16 +241,21 @@ jobs:
                 if (!fs.existsSync('public/thumbnails')) fs.mkdirSync('public/thumbnails', { recursive: true });
                 const imgRes = await fetch(imageFromComment);
                 if (imgRes.ok) {
-                  const buf = Buffer.from(await imgRes.arrayBuffer());
-                  if (buf.length >= MIN_IMAGE_SIZE) {
-                    fs.writeFileSync(thumbDest, buf);
-                    thumbPath = `/thumbnails/${thumbFile}`;
-                    const updated = fs.readFileSync(filePath, 'utf-8').replace(
-                      /(github_url:.*\n)/,
-                      `$1thumbnail: "${thumbPath}"\n`
-                    );
-                    fs.writeFileSync(filePath, updated);
-                    console.log(`📸 Downloaded thumbnail from comment: ${thumbFile} (${(buf.length / 1024).toFixed(1)} KB)`);
+                  const contentLen = parseInt(imgRes.headers.get('content-length') || '0', 10);
+                  if (contentLen > MAX_IMAGE_SIZE) {
+                    console.log(`⚠️ Comment image too large (${(contentLen / 1024 / 1024).toFixed(1)} MB), skipping`);
+                  } else {
+                    const buf = Buffer.from(await imgRes.arrayBuffer());
+                    if (buf.length >= MIN_IMAGE_SIZE && buf.length <= MAX_IMAGE_SIZE) {
+                      fs.writeFileSync(thumbDest, buf);
+                      thumbPath = `/thumbnails/${thumbFile}`;
+                      const updated = fs.readFileSync(filePath, 'utf-8').replace(
+                        /(github_url:.*\n)/,
+                        `$1thumbnail: "${thumbPath}"\n`
+                      );
+                      fs.writeFileSync(filePath, updated);
+                      console.log(`📸 Downloaded thumbnail from comment: ${thumbFile} (${(buf.length / 1024).toFixed(1)} KB)`);
+                    }
                   }
                 }
               } catch (e) {
@@ -281,9 +298,14 @@ jobs:
                       }
                       const imgRes = await fetch(imgUrl);
                       if (imgRes.ok) {
+                        const contentLen = parseInt(imgRes.headers.get('content-length') || '0', 10);
+                        if (contentLen > MAX_IMAGE_SIZE) {
+                          console.log(`  ⚠️ ${imgUrl.split('/').pop()}: too large (${(contentLen / 1024 / 1024).toFixed(1)} MB)`);
+                          continue;
+                        }
                         const buf = Buffer.from(await imgRes.arrayBuffer());
                         console.log(`  📏 ${imgUrl.split('/').pop()}: ${(buf.length / 1024).toFixed(1)} KB`);
-                        if (buf.length >= MIN_IMAGE_SIZE) {
+                        if (buf.length >= MIN_IMAGE_SIZE && buf.length <= MAX_IMAGE_SIZE) {
                           imageCandidates.push({ url: imgUrl, size: buf.length, buffer: buf });
                         }
                       }

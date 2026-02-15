@@ -37,7 +37,7 @@ jobs:
               const controller = new AbortController();
               const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
               try {
-                return await fetchWithTimeout(url, { ...opts, signal: controller.signal });
+                return await fetch(url, { ...opts, signal: controller.signal });
               } finally {
                 clearTimeout(timeout);
               }

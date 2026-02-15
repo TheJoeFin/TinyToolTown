@@ -155,10 +155,32 @@ const moreTags = [...tagCounts.entries()]
       : `Showing ${visible} of ${totalCount} tools`;
   }
 
-  // Pre-fill search from ?q= URL parameter
-  const urlQ = new URLSearchParams(window.location.search).get('q');
+  // Pre-fill search from ?q= URL parameter, or activate tag from ?tag=
+  const params = new URLSearchParams(window.location.search);
+  const urlQ = params.get('q');
+  const urlTag = params.get('tag');
   if (urlQ) {
     search.value = urlQ;
+    filterTools();
+  } else if (urlTag) {
+    activeTag = urlTag.toLowerCase();
+    // Activate the matching tag button (may be in the "more" section)
+    if (moreTags && moreToggle) {
+      const allBtns = document.querySelectorAll('.tag-btn[data-tag]');
+      let found = false;
+      allBtns.forEach(b => {
+        if ((b as HTMLElement).dataset.tag === activeTag) {
+          found = true;
+          // If it's inside the hidden more-tags section, expand it
+          if (b.closest('#more-tags')) {
+            moreTags.style.display = 'contents';
+            moreToggle.textContent = 'Less ▴';
+          }
+          document.querySelectorAll('.tag-btn').forEach(x => x.classList.remove('active'));
+          b.classList.add('active');
+        }
+      });
+    }
     filterTools();
   }
 

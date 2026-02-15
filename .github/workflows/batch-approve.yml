@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: batch-approve-tool
+  group: tool-file-writer
   cancel-in-progress: false
 
 jobs:
@@ -28,6 +28,17 @@ jobs:
             // --- Shared helpers ---
             const sanitize = (s) => s.replace(/[\r\n]+/g, ' ').replace(/[^\x20-\x7E\xA0-\uFFFF]/g, '').trim();
             const yamlStr = (s) => `"${sanitize(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+            const sanitizeHtml = (s) => s
+              .replace(/<script[\s>][\s\S]*?<\/script>/gi, '')
+              .replace(/<iframe[\s>][\s\S]*?<\/iframe>/gi, '')
+              .replace(/<object[\s>][\s\S]*?<\/object>/gi, '')
+              .replace(/<embed[^>]*>/gi, '')
+              .replace(/<link[^>]*>/gi, '')
+              .replace(/<style[\s>][\s\S]*?<\/style>/gi, '')
+              .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')
+              .replace(/\bon\w+\s*=\s*\S+/gi, '')
+              .replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href="#"')
+              .replace(/src\s*=\s*["']javascript:[^"']*["']/gi, 'src="#"');
             const safeImageExt = (urlStr) => {
               const allowed = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
               try {
@@ -38,6 +49,7 @@ jobs:
             const badgeHosts = ['img.shields.io', 'badge.fury.io', 'badgen.net', 'badges.', 'coveralls.io', 'codecov.io', 'travis-ci.', 'ci.appveyor.com', 'github.com/workflows'];
             const isBadge = (u) => badgeHosts.some(h => u.includes(h)) || u.includes('/badge');
             const MIN_IMAGE_SIZE = 10 * 1024;
+            const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
             const getField = (body, label) => {
               const regex = new RegExp(`### ${label}\\s*\\n\\s*([\\s\\S]*?)(?=\\n###|\\n\\n###|$)`);
@@ -86,8 +98,9 @@ jobs:
                   continue;
                 }
 
-                // Validate GitHub URL format
-                if (!/^https:\/\/github\.com\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+\/?$/.test(github_url)) {
+                // Validate GitHub URL format (allow subpaths like /tree/main/subfolder)
+                github_url = github_url.replace('://www.github.com/', '://github.com/');
+                if (!/^https:\/\/github\.com\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+(\/.*)?$/.test(github_url)) {
                   console.log(`⏭️ #${issue.number}: invalid GitHub URL, skipping`);
                   skipped++;
                   continue;
@@ -106,15 +119,15 @@ jobs:
 
                 const filePath = `src/content/tools/${slug}.md`;
 
-                // Skip if already processed
+                // Skip if already processed (don't claim credit)
                 if (fs.existsSync(filePath)) {
                   console.log(`⏭️ #${issue.number} (${name}): already exists as ${slug}.md`);
-                  // Still close the issue if it's open
+                  // Close the issue but note it was a duplicate slug
                   await github.rest.issues.createComment({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     issue_number: issue.number,
-                    body: `🏘️ **Welcome to Tiny Tool Town!**\n\n**${sanitize(name)}** has been added and will be live on [tinytooltown.com](https://www.tinytooltown.com/tools/${slug}/) once the site rebuilds (about 1 minute).\n\nThanks for sharing your tool! ✨`
+                    body: `⚠️ A tool with slug \`${slug}\` already exists. If this is a different tool, please resubmit with a unique name.`
                   });
                   await github.rest.issues.update({
                     owner: context.repo.owner,
@@ -179,7 +192,7 @@ jobs:
                   `tagline: ${yamlStr(tagline)}`,
                   `author: ${yamlStr(author)}`,
                   `author_github: "${sanitize(author_github).replace(/[^a-zA-Z0-9_-]/g, '')}"`,
-                  `github_url: "${sanitize(github_url)}"`,
+                  `github_url: ${yamlStr(github_url)}`,
                 ];
                 if (website_url && website_url !== '_No response_') {
                   lines.push(`website_url: ${yamlStr(website_url)}`);
@@ -195,7 +208,7 @@ jobs:
                 lines.push('featured: false');
                 lines.push('---');
                 lines.push('');
-                lines.push(description);
+                lines.push(sanitizeHtml(description));
 
                 fs.writeFileSync(filePath, lines.join('\n'));
 
@@ -230,8 +243,10 @@ jobs:
                     if (!fs.existsSync('public/thumbnails')) fs.mkdirSync('public/thumbnails', { recursive: true });
                     const imgRes = await fetch(imageFromComment);
                     if (imgRes.ok) {
+                      const contentLen = parseInt(imgRes.headers.get('content-length') || '0', 10);
+                      if (contentLen <= MAX_IMAGE_SIZE) {
                       const buf = Buffer.from(await imgRes.arrayBuffer());
-                      if (buf.length >= MIN_IMAGE_SIZE) {
+                      if (buf.length >= MIN_IMAGE_SIZE && buf.length <= MAX_IMAGE_SIZE) {
                         fs.writeFileSync(thumbDest, buf);
                         thumbPath = `/thumbnails/${thumbFile}`;
                         const updated = fs.readFileSync(filePath, 'utf-8').replace(
@@ -239,6 +254,7 @@ jobs:
                           `$1thumbnail: "${thumbPath}"\n`
                         );
                         fs.writeFileSync(filePath, updated);
+                      }
                       }
                     }
                   } catch (e) {
@@ -268,8 +284,10 @@ jobs:
                           }
                           const imgRes = await fetch(imgUrl);
                           if (imgRes.ok) {
+                            const contentLen = parseInt(imgRes.headers.get('content-length') || '0', 10);
+                            if (contentLen > MAX_IMAGE_SIZE) continue;
                             const buf = Buffer.from(await imgRes.arrayBuffer());
-                            if (buf.length >= MIN_IMAGE_SIZE) {
+                            if (buf.length >= MIN_IMAGE_SIZE && buf.length <= MAX_IMAGE_SIZE) {
                               imageCandidates.push({ url: imgUrl, size: buf.length, buffer: buf });
                             }
                           }
